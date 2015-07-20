@@ -6,7 +6,7 @@ program = $stdin.readlines.join('').gsub(/\s/, '')
 def parse_variable(stuff)
   if stuff =~ /^([a-zA-Z][a-zA-Z0-9]*)/
     stuff.slice!(0...$1.length)
-    $1.to_sym
+    $1
   end
 end
 
@@ -62,7 +62,7 @@ end
 
 
 def eval_value(value, variables)
-  return variables[value] if value.is_a?(Symbol)
+  return variables[value] if value.is_a?(String)
   value
 end
 
