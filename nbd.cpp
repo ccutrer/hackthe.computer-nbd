@@ -24,36 +24,36 @@ struct Statement
   }
 
   Op op;
-  std::string variable1;
-  std::string variable2;
+  int64_t *variable1;
+  int64_t *variable2;
   bool is_variable;
-  uint64_t integer;
+  int64_t integer;
   std::vector<Statement> substatements;
 };
 
-std::string parseVariable(char * &stuff)
+int64_t *parseVariable(char * &stuff, map<string, int64_t> &variables)
 {
   char * begin = stuff;
   while ( (*stuff >= 'a' && *stuff <= 'z') ||
           (*stuff >= 'A' && *stuff <= 'Z') ||
           (*stuff >= '0' && *stuff <= '9'))
           ++stuff;
-  return std::string(begin, stuff - begin);
+  return &variables[std::string(begin, stuff - begin)];
 }
 
-uint64_t parseInteger(char * &stuff)
+int64_t parseInteger(char * &stuff)
 {
-  return strtoull(stuff, &stuff, 10);
+  return strtoll(stuff, &stuff, 10);
 }
 
-void parseValue(char * &stuff, std::string &variable, uint64_t &integer, bool &is_variable)
+void parseValue(char * &stuff, int64_t *&variable, int64_t &integer, bool &is_variable, map<string, int64_t> &variables)
 {
   if (*stuff >= '0' && *stuff <= '9') {
     is_variable = false;
     integer = parseInteger(stuff);
   } else {
     is_variable = true;
-    variable = parseVariable(stuff);
+    variable = parseVariable(stuff, variables);
   }
 }
 
@@ -70,7 +70,7 @@ Statement::Op parseOp(char * &stuff)
   }
 }
 
-void parse(std::vector<Statement> &statements, char * &stuff)
+void parse(std::vector<Statement> &statements, char * &stuff, map<string, int64_t> &variables)
 {
   while(true)
   {
@@ -83,54 +83,53 @@ void parse(std::vector<Statement> &statements, char * &stuff)
     } else if (*stuff == '?') {
       ++stuff;
       stmt.op = Statement::IfZero;
-      parseValue(stuff, stmt.variable1, stmt.integer, stmt.is_variable);
-      parse(stmt.substatements, stuff);
+      parseValue(stuff, stmt.variable1, stmt.integer, stmt.is_variable, variables);
+      parse(stmt.substatements, stuff, variables);
       ++stuff;
     } else if (*stuff == '!') {
       ++stuff;
       stmt.op = Statement::Print;
-      parseValue(stuff, stmt.variable1, stmt.integer, stmt.is_variable);
+      parseValue(stuff, stmt.variable1, stmt.integer, stmt.is_variable, variables);
     } else {
-      stmt.variable1 = parseVariable(stuff);
+      stmt.variable1 = parseVariable(stuff, variables);
       stmt.op = parseOp(stuff);
-      parseValue(stuff, stmt.variable2, stmt.integer, stmt.is_variable);
+      parseValue(stuff, stmt.variable2, stmt.integer, stmt.is_variable, variables);
     }
-          statements.push_back(stmt);
-
+    statements.push_back(stmt);
   }
 }
 
-uint64_t evalValue(const std::string &variable, const uint64_t &integer, const bool &is_variable, map<string, uint64_t> &variables)
+int64_t evalValue(const int64_t * const &variable, const int64_t &integer, const bool &is_variable)
 {
   if(is_variable) {
-    return variables[variable];
+    return *variable;
   } else {
     return integer;
   }
 }
 
-void eval(const vector<Statement> &statements, map<string, uint64_t> &variables)
+void eval(const vector<Statement> &statements)
 {
   for(vector<Statement>::const_iterator it = statements.begin(); it != statements.end(); ++it)
   {
     switch(it->op)
     {
       case Statement::Print:
-        cout << evalValue(it->variable1, it->integer, it->is_variable, variables) << endl;
+        cout << evalValue(it->variable1, it->integer, it->is_variable) << endl;
         break;
       case Statement::IfZero:
-          if (evalValue(it->variable1, it->integer, it->is_variable, variables) == 0ull) {
-            eval(it->substatements, variables);
+          if (evalValue(it->variable1, it->integer, it->is_variable) == 0ull) {
+            eval(it->substatements);
           }
           break;
       case Statement::Assign:
-        variables[it->variable1] = evalValue(it->variable2, it->integer, it->is_variable, variables);
+        *it->variable1 = evalValue(it->variable2, it->integer, it->is_variable);
         break;
       case Statement::Increment:
-        variables[it->variable1] += evalValue(it->variable2, it->integer, it->is_variable, variables);
+        *it->variable1 += evalValue(it->variable2, it->integer, it->is_variable);
         break;
       case Statement::Decrement:
-        variables[it->variable1] -= evalValue(it->variable2, it->integer, it->is_variable, variables);
+        *it->variable1 -= evalValue(it->variable2, it->integer, it->is_variable);
         break;
     }
   }
@@ -163,9 +162,9 @@ int main(int argc, char **argv)
     replace(program, '\r', "");
     replace(program, ' ', "");
     vector<Statement> statements;
+    map<string, int64_t> variables;
     char *prog = (char *)program.c_str();
-    parse(statements, prog);
-    map<string, uint64_t> variables;
-    eval(statements, variables);
+    parse(statements, prog, variables);
+    eval(statements);
   return 0;
 }
