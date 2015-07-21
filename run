@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+
+program = $stdin.readlines.join('').gsub(/\s/, '')
+program.gsub!('!', 'puts ')
+program.gsub!('?', "if 0 == ")
+program.gsub!('{', ';')
+program.gsub!('}', ';end;')
+
+eval(program)
